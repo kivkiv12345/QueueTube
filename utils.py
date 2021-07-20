@@ -4,6 +4,7 @@ if __name__ == '__main__':
     raise SystemExit(f"Running '{__file__.split('/')[-1]}' directly is unsupported.")
 
 import os
+import shutil
 import pickle
 import builtins
 from typing import Any
@@ -51,6 +52,41 @@ def get_youtube_credentials(suppress_prints=False) -> Credentials:
                 pickle.dump(credentials, file)
 
     return credentials
+
+
+def move_util(src, dst, *, follow_symlinks=True):
+    """
+    Copy data and metadata. Remove the original file afterwards.
+
+    Metadata is copied with copystat(). Please see the copystat function
+    for more information.
+
+    The destination may be a directory.
+
+    :param follow_symlinks: When False symlinks won't be followed.
+        This resembles GNU's "cp -P src dst".
+    :return: The file's destination.
+    """
+    if os.path.isdir(dst):
+        dst = os.path.join(dst, os.path.basename(src))
+    shutil.copyfile(src, dst, follow_symlinks=follow_symlinks)
+    shutil.copystat(src, dst, follow_symlinks=follow_symlinks)
+    os.remove(src)
+    return dst
+
+
+class UtilityFunctionClass:
+    """ class which contains different utilities potentially relevant for subclasses. """
+
+    def pop(self: object, key: str) -> Any:
+        """
+        Deletes and returns the specified attribute.
+        :param key: The string name of the attribute to delete and return.
+        :return: The item found and deleted in self.
+        """
+        item = getattr(self, key)  # Get the item from self, before we delete it.
+        delattr(self, key)  # Delete the item.
+        return item  # Return the item post-delete.
 
 
 class ItemCycler:
@@ -113,9 +149,12 @@ def add_youtube_dl_arguments(parser: ArgumentParser) -> None:
         test4 = i.split(SPACING_SEPARATOR)
         test5 = test4[0].split(', ')
         temp = test5[-1].split()
-        if len(temp) > 1:
+        if len(temp) > 1:  # Retain the YouTube-dl metavar
             test5[-1] = temp[0]
             arg_kwargs['metavar'] = temp[-1]
+        else:  # YouTube-dl arguments that do not specify a metavar should use a sentinel value we may recognize later.
+            arg_kwargs['action'] = 'store_const'
+            arg_kwargs['const'] = ...
 
         arg_kwargs['help'] = ''.join(
             [char if char != '%' else cycler.next_item for char in ''.join([i for i in test4[1:] if i]).strip()])

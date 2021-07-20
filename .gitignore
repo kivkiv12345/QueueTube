@@ -11,6 +11,7 @@ github_tokens.txt
 
 # Ignore videos downloaded for a specific user
 queue/
+queue/
 
 # ================================
 
